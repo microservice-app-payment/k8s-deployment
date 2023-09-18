@@ -20,8 +20,10 @@ resource "tls_private_key" "rsa_4096" {
 }
 
 variable "key_name" {
-  description = "test"
+  default     = "docker.pem"
+  description = "Docker-Server-Key"
 }
+
 
 // Create Key Pair for Connecting EC2 via SSH
 resource "aws_key_pair" "key_pair" {
@@ -38,7 +40,7 @@ resource "local_file" "private_key" {
 # Create a security group
 resource "aws_security_group" "sg_ec2" {
   name        = "sg_ec2"
-  description = "SG Jenkins VM"
+  description = "SG Docker VM"
 
   ingress {
     from_port   = 22
@@ -62,7 +64,7 @@ resource "aws_instance" "public_instance" {
   vpc_security_group_ids = [aws_security_group.sg_ec2.id]
 
   tags = {
-    Name = "Jenkins-Server"
+    Name = "Docker-Server"
   }
 
   root_block_device {
@@ -70,21 +72,26 @@ resource "aws_instance" "public_instance" {
     volume_type = "gp2"
   }
 
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = tls_private_key.rsa_4096.private_key_pem
+    host        = self.public_ip
+  }
+
+  provisioner "file" {
+    source      = "./docker.sh"
+    destination = "/tmp/docker.sh"
+  }
+
   provisioner "remote-exec" {
     inline = [
-      "chmod +x install.sh",  # Cấp quyền thực thi cho tệp tin install.sh
-      "./install.sh"  # Thực thi tệp tin install.sh trên máy ảo EC2
+      "chmod +x /tmp/docker.sh",
+      "/tmp/docker.sh"
     ]
   }
 }
 
-resource "docker_install" "docker" {
-  depends_on = [aws_instance.public_instance]
-
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /tmp/install.sh",
-      "/tmp/install.sh"
-    ]
-  }
+output "public_ip" {
+  value = aws_instance.public_instance.public_ip
 }

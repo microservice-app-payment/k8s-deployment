@@ -20,7 +20,8 @@ resource "tls_private_key" "rsa_4096" {
 }
 
 variable "key_name" {
-  description = "test"
+  default     = "jenkins.pem"
+  description = "Jenkins-Server-Key"
 }
 
 // Create Key Pair for Connecting EC2 via SSH
@@ -70,21 +71,26 @@ resource "aws_instance" "public_instance" {
     volume_type = "gp2"
   }
 
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = tls_private_key.rsa_4096.private_key_pem
+    host        = self.public_ip
+  }
+
+  provisioner "file" {
+    source      = "./jenkins.sh"
+    destination = "/tmp/jenkins.sh"
+  }
+
   provisioner "remote-exec" {
     inline = [
-      "chmod +x install.sh",  # Cấp quyền thực thi cho tệp tin install.sh
-      "./install.sh"  # Thực thi tệp tin install.sh trên máy ảo EC2
+      "chmod +x /tmp/jenkins.sh",
+      "/tmp/jenkins.sh"
     ]
   }
 }
 
-resource "docker_install" "docker" {
-  depends_on = [aws_instance.public_instance]
-
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /tmp/install.sh",
-      "/tmp/install.sh"
-    ]
-  }
+output "public_ip" {
+  value = aws_instance.public_instance.public_ip
 }

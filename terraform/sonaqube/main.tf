@@ -9,8 +9,8 @@ terraform {
 
 provider "aws" {
   region     = "ap-southeast-1"
-  access_key = ""
-  secret_key = ""
+  access_key = "AKIA6APTF3CQMTJUEKVY"
+  secret_key = "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"
 }
 
 // To Generate Private Key
@@ -20,7 +20,8 @@ resource "tls_private_key" "rsa_4096" {
 }
 
 variable "key_name" {
-  description = "test"
+  default     = "sonarqube.pem" 
+  description = "Sonarqube-Server-Key"
 }
 
 // Create Key Pair for Connecting EC2 via SSH
@@ -38,11 +39,18 @@ resource "local_file" "private_key" {
 # Create a security group
 resource "aws_security_group" "sg_ec2" {
   name        = "sg_ec2"
-  description = "SG Jenkins VM"
+  description = "SG Sonarqube VM"
 
   ingress {
     from_port   = 22
     to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -62,7 +70,7 @@ resource "aws_instance" "public_instance" {
   vpc_security_group_ids = [aws_security_group.sg_ec2.id]
 
   tags = {
-    Name = "Jenkins-Server"
+    Name = "Sonarqube-Server"
   }
 
   root_block_device {
@@ -70,21 +78,22 @@ resource "aws_instance" "public_instance" {
     volume_type = "gp2"
   }
 
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x install.sh",  # Cấp quyền thực thi cho tệp tin install.sh
-      "./install.sh"  # Thực thi tệp tin install.sh trên máy ảo EC2
-    ]
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = tls_private_key.rsa_4096.private_key_pem
+    host        = self.public_ip
   }
-}
 
-resource "docker_install" "docker" {
-  depends_on = [aws_instance.public_instance]
+  provisioner "file" {
+    source      = "./sonarqube.sh"
+    destination = "/tmp/sonarqube.sh"
+  }
 
   provisioner "remote-exec" {
     inline = [
-      "chmod +x /tmp/install.sh",
-      "/tmp/install.sh"
+      "chmod +x /tmp/sonarqube.sh",
+      "/tmp/sonarqube.sh"
     ]
   }
 }
