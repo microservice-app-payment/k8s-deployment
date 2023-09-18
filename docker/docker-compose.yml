@@ -1,0 +1,202 @@
+version: '3'
+
+networks:
+  microservice-payment-app:
+    driver: bridge
+
+services:
+  zipkin-server:
+    image: openzipkin/zipkin
+    container_name: zipkin-server
+    restart: always
+    ports:
+      - 9411:9411
+    networks:
+      - microservice-payment-app
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://zipkin-server:9411/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  db-mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=Ngochung1809!
+    ports:
+      - 3306:3306
+    volumes:
+      - ./data.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - microservice-payment-app
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "db-mysql"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - 6379:6379
+    networks:
+      - microservice-payment-app
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  registry-service:
+    image: ngochung1809/registry-service:0.0.1
+    container_name: registry-service
+    ports:
+      - 8000:8000
+    networks:
+      - microservice-payment-app
+    healthcheck:
+      test: ["CMD", "curl","-f","http://registry-service:8000/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # start_period: 30s
+
+  config-server:
+    image: ngochung1809/config-server:0.0.1
+    container_name: config-server
+    networks:
+      - microservice-payment-app
+    environment:
+      - EUREKA_SERVER_ADDRESS=http://registry-service:8000/eureka
+      - CONFIG_URL=http://config-server:9000
+    ports:
+      - 9000:9000
+    healthcheck:
+      test: ["CMD", "curl","-f","http://config-server:9000/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # start_period: 30s
+    depends_on:
+      registry-service:
+        condition: service_healthy
+      # db-mysql:
+      #   condition: service_healthy
+      redis:
+        condition: service_healthy
+      zipkin-server:
+        condition: service_healthy
+
+  api-gateway:
+    image: ngochung1809/api-gateway:0.0.1
+    container_name: api-gateway
+    ports:
+      - 8080:8080
+    environment:
+      - EUREKA_SERVER_ADDRESS=http://registry-service:8000/eureka
+      - CONFIG_URL=http://config-server:9000
+      - ZIPKIN_URL=http://zipkin-server:9411
+      - REDIS_HOST=redis
+    networks:
+      - microservice-payment-app
+    healthcheck:
+      test: ["CMD", "curl","-f","http://api-gateway:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # start_period: 30s
+    depends_on:
+      config-server:
+        condition: service_healthy
+    
+  product-service:
+    image: ngochung1809/product-service:0.0.1
+    container_name: product-service
+    ports:
+      - 8083:8083
+    environment:
+      - EUREKA_SERVER_ADDRESS=http://registry-service:8000/eureka
+      - DB_HOST=db-mysql
+      - CONFIG_URL=http://config-server:9000
+      - ZIPKIN_URL=http://zipkin-server:9411
+    networks:
+      - microservice-payment-app
+    healthcheck:
+      test: ["CMD", "curl","-f","http://product-service:8083/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+  
+  payment-service:
+    image: ngochung1809/payment-service:0.0.1
+    container_name: payment-service
+    ports:
+      - 8082:8082
+    environment:
+      - EUREKA_SERVER_ADDRESS=http://registry-service:8000/eureka
+      - DB_HOST=db-mysql
+      - CONFIG_URL=http://config-server:9000
+      - ZIPKIN_URL=http://zipkin-server:9411
+    networks:
+      - microservice-payment-app
+    healthcheck:
+      test: ["CMD", "curl","-f","http://payment-service:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+  
+  order-service:
+    image: ngochung1809/order-service:0.0.1
+    container_name: order-service
+    ports:
+      - 8081:8081
+    environment:
+      - EUREKA_SERVER_ADDRESS=http://registry-service:8000/eureka
+      - DB_HOST=db-mysql
+      - CONFIG_URL=http://config-server:9000
+      - ZIPKIN_URL=http://zipkin-server:9411
+    networks:
+      - microservice-payment-app
+    healthcheck:
+      test: ["CMD", "curl","-f","http://order-service:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+  
+  # monitor
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus
+    ports:
+      - 9090:9090
+    networks:
+      - microservice-payment-app
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+    networks:
+      - microservice-payment-app
+    depends_on:
+      api-gateway:
+        condition: service_healthy
