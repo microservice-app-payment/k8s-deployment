@@ -23,4 +23,3 @@ sudo usermod -aG docker ubuntu
 sudo chown -R :docker /var/run/docker.sock
 sudo chmod 666 /var/run/docker.sock
 sudo systemctl restart docker
-touch success.txt

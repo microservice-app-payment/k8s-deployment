@@ -23,3 +23,8 @@ sudo usermod -aG docker ubuntu
 sudo chown -R :docker /var/run/docker.sock
 sudo chmod 666 /var/run/docker.sock
 sudo systemctl restart docker
+
+mkdir sonarqube-run
+cd ./sonarqube-run
+wget https://raw.githubusercontent.com/microservice-app-payment/k8s-deployment/master/terraform/sonaqube/docker-compose.yaml
+docker compose up -d

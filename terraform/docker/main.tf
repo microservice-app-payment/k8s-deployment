@@ -39,12 +39,47 @@ resource "local_file" "private_key" {
 
 # Create a security group
 resource "aws_security_group" "sg_ec2" {
-  name        = "sg_ec2"
+  name        = "sg_ec2_docker"
   description = "SG Docker VM"
 
   ingress {
     from_port   = 22
     to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+    ingress {
+    from_port   = 9411
+    to_port     = 9411
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -59,7 +94,7 @@ resource "aws_security_group" "sg_ec2" {
 
 resource "aws_instance" "public_instance" {
   ami                    = "ami-0df7a207adb9748c7"
-  instance_type          = "t2.micro"
+  instance_type          = "t2.medium"
   key_name               = aws_key_pair.key_pair.key_name
   vpc_security_group_ids = [aws_security_group.sg_ec2.id]
 
