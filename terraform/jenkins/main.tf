@@ -55,14 +55,6 @@ resource "aws_security_group" "sg_ec2" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Sonarqube
-  # ingress {
-  #   from_port   = 9000
-  #   to_port     = 9000
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
-
   egress {
     from_port   = 0
     to_port     = 0
