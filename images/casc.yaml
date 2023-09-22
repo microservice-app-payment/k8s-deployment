@@ -1,0 +1,10 @@
+jenkins:
+  clouds:
+    - docker:
+        dockerApi:
+          connectTimeout: 60
+          dockerHost:
+            uri: "tcp:localhost:2376"
+          readTimeout: 60
+        exposeDockerHost: true
+        name: "docker"
