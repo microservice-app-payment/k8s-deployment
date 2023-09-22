@@ -38,7 +38,7 @@ resource "local_file" "private_key" {
 
 # Create a security group
 resource "aws_security_group" "sg_ec2" {
-  name        = "sg_ec2"
+  name        = "sg_ec2_jenkins"
   description = "SG Jenkins VM"
 
   ingress {
@@ -47,6 +47,21 @@ resource "aws_security_group" "sg_ec2" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  # Jenkins Port
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Sonarqube
+  # ingress {
+  #   from_port   = 9000
+  #   to_port     = 9000
+  #   protocol    = "tcp"
+  #   cidr_blocks = ["0.0.0.0/0"]
+  # }
 
   egress {
     from_port   = 0
@@ -58,7 +73,7 @@ resource "aws_security_group" "sg_ec2" {
 
 resource "aws_instance" "public_instance" {
   ami                    = "ami-0df7a207adb9748c7"
-  instance_type          = "t2.micro"
+  instance_type          = "t2.medium"
   key_name               = aws_key_pair.key_pair.key_name
   vpc_security_group_ids = [aws_security_group.sg_ec2.id]
 

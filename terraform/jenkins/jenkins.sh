@@ -1,14 +1,8 @@
 #!/bin/bash
 
-############ Install Java 17 ############
-sudo apt-get update -y
-sudo apt install openjdk-17-jre -y
-
-############ Install Jenkins ############
-curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
-  /usr/share/keyrings/jenkins-keyring.asc > /dev/null
-echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
-  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
-  /etc/apt/sources.list.d/jenkins.list > /dev/null
-sudo apt-get update -y
-sudo apt-get install jenkins -y
+git clone https://github.com/microservice-app-payment/payment-project-jenkins-pack.git
+cd ./payment-project-jenkins-pack
+chmod 700 vm-startup-script.sh
+bash vm-startup-script.sh
+docker compose up -d
+docker exec -it jenkins cat /var/jenkins_home/secrets/initialAdminPassword
