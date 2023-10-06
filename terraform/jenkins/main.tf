@@ -65,7 +65,7 @@ resource "aws_security_group" "sg_ec2" {
 
 resource "aws_instance" "public_instance" {
   ami                    = "ami-0df7a207adb9748c7"
-  instance_type          = "t2.medium"
+  instance_type          = "t2.micro"
   key_name               = aws_key_pair.key_pair.key_name
   vpc_security_group_ids = [aws_security_group.sg_ec2.id]
 
